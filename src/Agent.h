@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <vector>
 
@@ -12,11 +14,13 @@ class Agent {
 
     void przemiescAgenta( int pozycja) {
         idAktualnegoWierzcholka = pozycja;
-        std::cout << "Przesunieto na wierzcholek: " << idAktualnegoWierzcholka << std::endl;
+        //std::cout << "Przesunieto na wierzcholek: " << idAktualnegoWierzcholka << std::endl;
     }
 
     int pozycjaAgenta() {
-        std::cout << "Pozycja agenta: " << idAktualnegoWierzcholka << std::endl;
+        //std::cout << "Pozycja agenta: " << idAktualnegoWierzcholka << std::endl;
         return idAktualnegoWierzcholka;
     }
+
+    int pozycjaAgenta() const { return idAktualnegoWierzcholka; }
 };
