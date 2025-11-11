@@ -1,5 +1,6 @@
 #pragma once
 
+#include <SFML/Graphics.hpp>
 #include <iostream>
 #include <vector>
 
@@ -10,15 +11,20 @@ class Wierzcholek {
     std::vector<int> sasiedzi;
 
   public:
-    Wierzcholek(int _id, int _pozycjaX, int _pozycjaY) : idWierzcholka(_id), pozycjaX(_pozycjaX), pozycjaY(_pozycjaY) {}
+    Wierzcholek(int _id, int _pozycjaX, int _pozycjaY)
+        : idWierzcholka(_id), pozycjaX(_pozycjaX), pozycjaY(_pozycjaY) {}
 
     void dodajSasiada(int sasiadId) { sasiedzi.push_back(sasiadId); }
-    
+
     const std::vector<int> pobierzSasiadow() { return sasiedzi; }
 
     void dodajPozycje(int x, int y) {
         pozycjaX = x;
         pozycjaY = y;
+    }
+
+    sf::Vector2f pozycjaWierzcholka() {
+        return sf::Vector2f(pozycjaX, pozycjaY);
     }
 
     void wyswietlDane() {
@@ -31,5 +37,4 @@ class Wierzcholek {
             std::cout << "  - " << sasiad << std::endl;
         }
     }
-
 };

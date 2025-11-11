@@ -8,19 +8,14 @@ class Agent {
     int idAktualnegoWierzcholka;
 
   public:
+    int moc;
     Agent(int _idAgenta, int _idAktualnegoWierzcholka)
         : idAgenta(_idAgenta),
           idAktualnegoWierzcholka(_idAktualnegoWierzcholka) {}
 
-    void przemiescAgenta( int pozycja) {
-        idAktualnegoWierzcholka = pozycja;
-        //std::cout << "Przesunieto na wierzcholek: " << idAktualnegoWierzcholka << std::endl;
-    }
+    void przemiescAgenta(int pozycja) { idAktualnegoWierzcholka = pozycja; }
 
-    int pozycjaAgenta() {
-        //std::cout << "Pozycja agenta: " << idAktualnegoWierzcholka << std::endl;
-        return idAktualnegoWierzcholka;
-    }
+    int pobierzIdAktualnegoWierzcholka() { return idAktualnegoWierzcholka; }
 
-    int pozycjaAgenta() const { return idAktualnegoWierzcholka; }
+    int pozycjaAgenta() { return idAktualnegoWierzcholka; }
 };

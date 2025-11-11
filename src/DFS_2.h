@@ -61,6 +61,8 @@ vector<int> dfs(vector<Wierzcholek>& graf, int start_index = 0) {
             s.pop();
             if (!s.empty()) {
                 //cout << "Cofam sie z " << node << " do " << s.top().first << endl;
+
+                res.push_back(s.top().first);
             }
         }
     }
