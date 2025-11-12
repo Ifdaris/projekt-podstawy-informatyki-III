@@ -1,17 +1,17 @@
 #pragma once
-#include <vector>
+#include <deque>
 #include "Wierzcholek.h"
 #include <algorithm>
 #include <stack>
 
 using namespace std;
 
-vector<int> dfs(vector<Wierzcholek>& graf, int start_index = 0) {
+deque<int> dfs(vector<Wierzcholek>& graf, int start_index = 0) {
     int n = graf.size();
     if (n == 0) return {};
 
     vector<bool> visited(n, false);
-    vector<int> res;
+    deque<int> res;
 
     // Stos przechowuje pary (wierzchołek, indeks następnego sąsiada do sprawdzenia)
     stack<pair<int, int>> s;
