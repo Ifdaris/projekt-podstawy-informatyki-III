@@ -28,8 +28,7 @@ class Wierzcholek {
     }
 
     void wyswietlDane() {
-        std::cout << "Identyfikator wierzcholka: " << idWierzcholka
-                  << std::endl;
+        std::cout << "Identyfikator wierzcholka: " << idWierzcholka << std::endl;
         std::cout << " Pozycja X: " << pozycjaX << std::endl;
         std::cout << " Pozycja Y: " << pozycjaY << std::endl;
         std::cout << " Lista sasiadow: " << std::endl;

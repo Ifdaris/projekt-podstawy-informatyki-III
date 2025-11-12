@@ -15,7 +15,5 @@ class Agent {
 
     void przemiescAgenta(int pozycja) { idAktualnegoWierzcholka = pozycja; }
 
-    int pobierzIdAktualnegoWierzcholka() { return idAktualnegoWierzcholka; }
-
     int pozycjaAgenta() { return idAktualnegoWierzcholka; }
 };
