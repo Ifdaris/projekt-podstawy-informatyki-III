@@ -12,24 +12,24 @@
 #include "DFS.h"
 #include "DaneAgenta.h"
 #include "Wierzcholek.h"
-#include "bonk.h"
+
+struct Statystyki {
+    int wygraneDFS = 0;
+    int wygraneLosowe = 0;
+};
 
 int main() {
     srand(time(NULL));
 
     std::string line;
-
-    std::ifstream plik("res/graf2.txt");
+    std::ifstream plik("res/graf3.txt");
     std::vector<Wierzcholek> graf;
     std::vector<sf::Vector2f> pozycjeWierzcholkow;
     std::stringstream ss;
 
-    int idWierzcholka;
-    int idSasiada;
-    float pozycjaX;
-    float pozycjaY;
+    int idWierzcholka, idSasiada;
+    float pozycjaX, pozycjaY;
 
-    // Wczytywanie grafu z pliku
     while (getline(plik, line)) {
         ss.clear();
         ss.str(line);
@@ -45,246 +45,151 @@ int main() {
     }
     plik.close();
 
-    // Tworzenie agentow
     int iloscAgentowDFS = 4;
     int iloscAgentowLosowych = 3;
-    std::vector<DaneAgenta> agenci;
+    const int LICZBA_SYMULACJI = 100000;
 
-    int idAgentow = 0;
+    Statystyki statystyki;
 
-    vector<sf::Color> kolory = {sf::Color::Red, sf::Color::Blue, sf::Color::Black, sf::Color::Cyan, sf::Color::Green, sf::Color::Magenta, sf::Color::Yellow};
-    size_t iterKolorow = 0;
-    std::unordered_set<int> wierzcholkiPoczatkowe;
+    std::cout << "Start symulacji" << std::endl;
+
     int poczatkowyWierzcholek = rand() % graf.size();
 
-    // Inicjalizowanie agentow
-    for (int i = 0; i < iloscAgentowDFS; i++, idAgentow++) {
-        while (wierzcholkiPoczatkowe.find(poczatkowyWierzcholek) != wierzcholkiPoczatkowe.end()) {
-            poczatkowyWierzcholek = rand() % graf.size();
-        }
-        // Animacja
-        sf::Vector2f startPos = pozycjeWierzcholkow[poczatkowyWierzcholek];
-        agenci.emplace_back(idAgentow, poczatkowyWierzcholek, kolory[iterKolorow], dfs(graf, poczatkowyWierzcholek), rand() % 100, startPos);
-        //--------
+    for (int symulacja = 0; symulacja < LICZBA_SYMULACJI; symulacja++) {
 
-        wierzcholkiPoczatkowe.insert(poczatkowyWierzcholek);
-        iterKolorow++;
-    }
+        // Inicjalizowanie agentow
+        std::vector<DaneAgenta> agenci;
+        std::unordered_set<int> wierzcholkiPoczatkowe;
+        int idAgentow = 0;
 
-    for (int i = 0; i < iloscAgentowLosowych; i++, idAgentow++) {
-        while (wierzcholkiPoczatkowe.find(poczatkowyWierzcholek) != wierzcholkiPoczatkowe.end()) {
-            poczatkowyWierzcholek = rand() % graf.size();
-        }
-        // Animacja
-        sf::Vector2f startPos = pozycjeWierzcholkow[poczatkowyWierzcholek];
-        agenci.emplace_back(idAgentow, poczatkowyWierzcholek, kolory[iterKolorow], algorytmlosowy(graf, poczatkowyWierzcholek), rand() % 100, startPos);
-
-        wierzcholkiPoczatkowe.insert(poczatkowyWierzcholek);
-        iterKolorow++;
-    }
-
-    // Dodanie efektow dzwiekowych
-    sf::Music bonk("res/bonk.mp3");
-    sf::Music YodaDeath("res/YodaDeath.mp3");
-    sf::Music jackpot("res/jackpot.mp3");
-
-    sf::RenderWindow window(sf::VideoMode({1000, 600}), "Graf");
-    window.setFramerateLimit(0);
-
-    // Wizualizacja wierzchołków
-    std::vector<sf::CircleShape> wezly;
-    for (const sf::Vector2f &pos : pozycjeWierzcholkow) {
-        sf::CircleShape shape(10.f);
-        shape.setFillColor(sf::Color::White);
-        shape.setOrigin({shape.getRadius(), shape.getRadius()});
-        shape.setPosition(pos);
-        wezly.push_back(shape);
-    }
-
-    sf::VertexArray krawedzie(sf::PrimitiveType::Lines);
-
-    const sf::Color kolorLinii(100, 100, 100);
-    for (int i = 0; i < graf.size(); ++i) {
-        sf::Vector2f pozycjaStartowa = pozycjeWierzcholkow[i];
-
-        for (int sasiadId : graf[i].pobierzSasiadow()) {
-            if (i < sasiadId) {
-                sf::Vector2f pozycjaKoncowa = pozycjeWierzcholkow[sasiadId];
-
-                krawedzie.append(sf::Vertex{pozycjaStartowa, kolorLinii});
-                krawedzie.append(sf::Vertex{pozycjaKoncowa, kolorLinii});
+        for (int i = 0; i < iloscAgentowDFS; i++, idAgentow++) {
+            while (wierzcholkiPoczatkowe.find(poczatkowyWierzcholek) != wierzcholkiPoczatkowe.end()) {
+                poczatkowyWierzcholek = rand() % graf.size();
             }
-        }
-    }
+            // Animacja
+            sf::Vector2f startPos = pozycjeWierzcholkow[poczatkowyWierzcholek];
+            agenci.emplace_back(idAgentow, poczatkowyWierzcholek, sf::Color::Red, dfs(graf, poczatkowyWierzcholek), rand() % 100, startPos);
+            //--------
 
-    bool czySkonczone = false;
-    bool czyTura = false;
-    vector<size_t> przegrani;
-    int idZwyciezcy = -1;
-    float licznikCzasu = 0.f;
-    int czyJackpot = -1;
-
-    sf::Clock deltaClock;
-
-    while (window.isOpen()) {
-
-        sf::Time dtTime = deltaClock.restart();
-        float dt = dtTime.asSeconds();
-
-        bool czyKtosSieRusza = false;
-        for (auto &a : agenci) {
-            if (a.czyZywy == false)
-                continue;
-
-            a.aktualizujAnimacje(dt); // To przesuwa kółka
-            if (a.wTrakcieRuchu)
-                czyKtosSieRusza = true;
+            wierzcholkiPoczatkowe.insert(poczatkowyWierzcholek);
         }
 
-        while (const auto event = window.pollEvent()) {
-            if (event->is<sf::Event::Closed>()) {
-                window.close();
+        for (int i = 0; i < iloscAgentowLosowych; i++, idAgentow++) {
+            while (wierzcholkiPoczatkowe.find(poczatkowyWierzcholek) != wierzcholkiPoczatkowe.end()) {
+                poczatkowyWierzcholek = rand() % graf.size();
             }
+            // Animacja
+            sf::Vector2f startPos = pozycjeWierzcholkow[poczatkowyWierzcholek];
+            agenci.emplace_back(idAgentow, poczatkowyWierzcholek, sf::Color::Red, algorytmlosowy(graf, poczatkowyWierzcholek), rand() % 100, startPos);
+            //---------
+            wierzcholkiPoczatkowe.insert(poczatkowyWierzcholek);
+        }
 
-            if (const auto *keyPressed = event->getIf<sf::Event::KeyPressed>()) {
+        bool czySkonczone = false;
+        bool czyTura = false;
+        vector<size_t> przegrani;
+        int limitTur = 0;
 
-                if (czyKtosSieRusza)
-                    continue;
-                if (czySkonczone == false) {
+        while (!czySkonczone && limitTur < 2000) {
+            limitTur++;
 
-                    if (czyTura == false) {
+            if (czyTura == false) {
 
-                        if (keyPressed->code == sf::Keyboard::Key::Right) {
+                for (int i = 0; i < agenci.size(); i++) {
+                    if (agenci[i].czyZywy == false)
+                        continue;
 
-                            for (int i = 0; i < agenci.size(); i++) {
-                                if (agenci[i].czyZywy == false)
-                                    continue;
+                    if (!agenci[i].kolejka.empty()) {
 
-                                if (!agenci[i].kolejka.empty()) {
+                        if (agenci[i].odwiedzone.size() < graf.size()) {
 
-                                    if (agenci[i].odwiedzone.size() < graf.size()) {
-                                        // Animacja
-                                        int idCelu = agenci[i].kolejka.front();
-
-                                        agenci[i].agent.przemiescAgenta(agenci[i].kolejka.front());
-                                        agenci[i].odwiedzone.insert(agenci[i].kolejka.front());
-                                        agenci[i].poprzednieKroki.emplace_back(agenci[i].kolejka.front());
-                                        agenci[i].kolejka.pop_front();
-
-                                        agenci[i].idzDo(pozycjeWierzcholkow[idCelu]);
-                                    }
-                                    if (agenci[i].odwiedzone.size() == graf.size() - 1) {
-                                        (czySkonczone = true);
-                                        idZwyciezcy = i;
-                                    }
-                                }
+                            agenci[i].agent.przemiescAgenta(agenci[i].kolejka.front());
+                            agenci[i].odwiedzone.insert(agenci[i].kolejka.front());
+                            agenci[i].poprzednieKroki.emplace_back(agenci[i].kolejka.front());
+                            agenci[i].kolejka.pop_front();
+                        }
+                        if (agenci[i].odwiedzone.size() == graf.size() - 1) {
+                            czySkonczone = true;
+                            if (i < iloscAgentowDFS - 1) {
+                                statystyki.wygraneDFS++;
+                                break;
                             }
-                            std::vector<std::vector<int>> agenciNaWierzcholku(graf.size());
-
-                            for (int i = 0; i < agenci.size(); i++) {
-                                if (agenci[i].czyZywy == false)
-                                    continue;
-
-                                agenciNaWierzcholku[agenci[i].agent.pozycjaAgenta()].push_back(i);
+                            else {
+                                statystyki.wygraneLosowe++;
+                                break;
                             }
-
-                            for (int i = 0; i < agenciNaWierzcholku.size(); i++) {
-                                if (agenciNaWierzcholku[i].size() > 1) {
-                                    bonk.play();
-                                    int najwiekszaMoc = -1;
-                                    int idNajsilniejszego = agenciNaWierzcholku[i][0];
-
-                                    for (int j : agenciNaWierzcholku[i]) {
-                                        if (agenci[j].agent.moc > najwiekszaMoc) {
-                                            najwiekszaMoc = agenci[j].agent.moc;
-                                            idNajsilniejszego = j;
-                                        }
-                                    }
-
-                                    for (int idPrzegranego : agenciNaWierzcholku[i]) {
-                                        if (idPrzegranego != idNajsilniejszego) {
-                                            przegrani.emplace_back(idPrzegranego);
-                                        }
-                                    }
-
-                                    czyTura = true;
-                                }
-                            }
-                            agenciNaWierzcholku.clear();
                         }
                     }
-                    // Animacja
-                    else if (czyTura && !czyKtosSieRusza) {
-                        czyTura = false;
+                }
+                std::vector<std::vector<int>> agenciNaWierzcholku(graf.size());
 
-                        for (size_t i : przegrani) {
-                            bool doZabicia = false;
-                            if (agenci[i].czyZywy == false)
+                for (int i = 0; i < agenci.size(); i++) {
+                    if (agenci[i].czyZywy == false)
+                        continue;
+
+                    agenciNaWierzcholku[agenci[i].agent.pozycjaAgenta()].push_back(i);
+                }
+
+                for (int i = 0; i < agenciNaWierzcholku.size(); i++) {
+                    if (agenciNaWierzcholku[i].size() > 1) {
+                        int najwiekszaMoc = -1;
+                        int idNajsilniejszego = agenciNaWierzcholku[i][0];
+
+                        for (int j : agenciNaWierzcholku[i]) {
+                            if (agenci[j].agent.moc > najwiekszaMoc) {
+                                najwiekszaMoc = agenci[j].agent.moc;
+                                idNajsilniejszego = j;
+                            }
+                        }
+
+                        for (int idPrzegranego : agenciNaWierzcholku[i]) {
+                            if (idPrzegranego != idNajsilniejszego) {
+                                przegrani.emplace_back(idPrzegranego);
+                            }
+                        }
+
+                        czyTura = true;
+                    }
+                }
+                agenciNaWierzcholku.clear();
+            } else {
+                czyTura = false;
+
+                for (size_t i : przegrani) {
+                    bool doZabicia = false;
+                    if (agenci[i].czyZywy == false)
+                        continue;
+
+                    if (agenci[i].poprzednieKroki.size() >= 2) {
+                        int idCeluCofniecia = agenci[i].poprzednieKroki[agenci[i].poprzednieKroki.size() - 2];
+
+                        for (auto &j : agenci) {
+                            if (j.czyZywy == false)
                                 continue;
-
-                            if (agenci[i].poprzednieKroki.size() >= 2) {
-                                int idCeluCofniecia = agenci[i].poprzednieKroki[agenci[i].poprzednieKroki.size() - 2];
-
-                                for (auto &j : agenci) {
-                                    if (j.czyZywy == false)
-                                        continue;
-                                    if (j.agent.pozycjaAgenta() == idCeluCofniecia)
-                                        doZabicia = true;
-                                }
-
-                                if (doZabicia) {
-                                    agenci[i].czyUmiera = true;
-                                    YodaDeath.play();
-                                    agenci[i].smierc();
-                                } else {
-                                    agenci[i].cofnij(pozycjeWierzcholkow[idCeluCofniecia]);
-                                }
-                            }
+                            if (j.agent.pozycjaAgenta() == idCeluCofniecia)
+                                doZabicia = true;
                         }
-                        przegrani.clear();
-                    }
-                    if (keyPressed->code == sf::Keyboard::Key::Left) {
+
+                        if (doZabicia) {
+                            agenci[i].czyZywy = false;
+                        } else {
+                            agenci[i].cofnij(pozycjeWierzcholkow[idCeluCofniecia]);
+                        }
                     }
                 }
+                przegrani.clear();
             }
         }
-        licznikCzasu += dt;
 
-        if (czySkonczone == 1 && idZwyciezcy != -1) {
-            
-            if (agenci[idZwyciezcy].wTrakcieRuchu == false) {
-                agenci[idZwyciezcy].zmienRozmiar(50.f);
-
-                if (czyJackpot == -1){
-                    jackpot.play();
-                    czyJackpot = 1;
-                }
-
-                if (licznikCzasu <= 0.5f) {
-                    agenci[idZwyciezcy].koloAgenta.setFillColor(sf::Color::Red);
-                } else if (licznikCzasu <= 1.f) {
-                    agenci[idZwyciezcy].koloAgenta.setFillColor(sf::Color::Green);
-                } else if (licznikCzasu <= 1.5f) {
-                    agenci[idZwyciezcy].koloAgenta.setFillColor(sf::Color::Blue);
-                } else licznikCzasu = 0.f;
-            }
-        }
-        // Kolor backgroundu
-        window.clear(sf::Color::Black);
-
-        // Rysuj w kolejności:
-        window.draw(krawedzie);
-        for (const auto &wezel : wezly) {
-            window.draw(wezel);
-        }
-
-        for (auto &i : agenci) {
-            if (i.czyZywy == false)
-                continue;
-
-            window.draw(i.koloAgenta);
-        }
-
-        window.display();
+        if ((symulacja + 1) % 100 == 0)
+            std::cout << "Ukonczono " << symulacja + 1 << " symulacji." << std::endl;
     }
+
+    std::cout << "Wyniki: " << std::endl;
+    std::cout << "DFS Wygral: " << statystyki.wygraneDFS << " razy (" << (float)statystyki.wygraneDFS / LICZBA_SYMULACJI * 100.0f << "%)" << std::endl;
+    std::cout << "Losowy Wygral: " << statystyki.wygraneLosowe << " razy (" << (float)statystyki.wygraneLosowe / LICZBA_SYMULACJI * 100.0f << "%)" << std::endl;
+    std::cout << "Remisy/Bledy (Limit tur): " << (LICZBA_SYMULACJI - statystyki.wygraneDFS - statystyki.wygraneLosowe) << std::endl;
+
+    std::cin.get();
+    return 0;
 }
