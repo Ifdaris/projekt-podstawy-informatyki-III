@@ -5,33 +5,34 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <time.h>
 #include <vector>
 
-#include "Agent.h"
 #include "AlgorytmLosowy.h"
 #include "DFS.h"
+#include "DaneAgenta.h"
 #include "Wierzcholek.h"
 #include "bonk.h"
 
 int main() {
-    
+    srand(time(NULL));
+
     std::string line;
 
-    std::ifstream plik("res/graf.txt");
+    std::ifstream plik("res/graf2.txt");
     std::vector<Wierzcholek> graf;
     std::vector<sf::Vector2f> pozycjeWierzcholkow;
     std::stringstream ss;
 
     int idWierzcholka;
     int idSasiada;
-    int pozycjaX;
-    int pozycjaY;
+    float pozycjaX;
+    float pozycjaY;
 
     // Wczytywanie grafu z pliku
     while (getline(plik, line)) {
         ss.clear();
         ss.str(line);
-
         ss >> idWierzcholka >> pozycjaX >> pozycjaY;
 
         Wierzcholek wierzcholek(idWierzcholka, pozycjaX, pozycjaY);
@@ -45,14 +46,50 @@ int main() {
     plik.close();
 
     // Tworzenie agentow
-    Agent a1(0, 0);
-    Agent a2(1, 17);
+    int iloscAgentowDFS = 4;
+    int iloscAgentowLosowych = 3;
+    std::vector<DaneAgenta> agenci;
+
+    int idAgentow = 0;
+
+    vector<sf::Color> kolory = {sf::Color::Red, sf::Color::Blue, sf::Color::Black, sf::Color::Cyan, sf::Color::Green, sf::Color::Magenta, sf::Color::Yellow};
+    size_t iterKolorow = 0;
+    std::unordered_set<int> wierzcholkiPoczatkowe;
+    int poczatkowyWierzcholek = rand() % graf.size();
+
+    // Inicjalizowanie agentow
+    for (int i = 0; i < iloscAgentowDFS; i++, idAgentow++) {
+        while (wierzcholkiPoczatkowe.find(poczatkowyWierzcholek) != wierzcholkiPoczatkowe.end()) {
+            poczatkowyWierzcholek = rand() % graf.size();
+        }
+        // Animacja
+        sf::Vector2f startPos = pozycjeWierzcholkow[poczatkowyWierzcholek];
+        agenci.emplace_back(idAgentow, poczatkowyWierzcholek, kolory[iterKolorow], dfs(graf, poczatkowyWierzcholek), rand() % 100, startPos);
+        //--------
+
+        wierzcholkiPoczatkowe.insert(poczatkowyWierzcholek);
+        iterKolorow++;
+    }
+
+    for (int i = 0; i < iloscAgentowLosowych; i++, idAgentow++) {
+        while (wierzcholkiPoczatkowe.find(poczatkowyWierzcholek) != wierzcholkiPoczatkowe.end()) {
+            poczatkowyWierzcholek = rand() % graf.size();
+        }
+        // Animacja
+        sf::Vector2f startPos = pozycjeWierzcholkow[poczatkowyWierzcholek];
+        agenci.emplace_back(idAgentow, poczatkowyWierzcholek, kolory[iterKolorow], algorytmlosowy(graf, poczatkowyWierzcholek), rand() % 100, startPos);
+
+        wierzcholkiPoczatkowe.insert(poczatkowyWierzcholek);
+        iterKolorow++;
+    }
 
     // Dodanie efektow dzwiekowych
     sf::Music bonk("res/bonk.mp3");
+    sf::Music YodaDeath("res/YodaDeath.mp3");
+    sf::Music jackpot("res/jackpot.mp3");
 
     sf::RenderWindow window(sf::VideoMode({1000, 600}), "Graf");
-    window.setFramerateLimit(1000);
+    window.setFramerateLimit(0);
 
     // Wizualizacja wierzchołków
     std::vector<sf::CircleShape> wezly;
@@ -63,16 +100,6 @@ int main() {
         shape.setPosition(pos);
         wezly.push_back(shape);
     }
-
-    // Wizualizacja agentów
-    sf::CircleShape agentCircle1(8.f);
-    agentCircle1.setFillColor(sf::Color::Red);
-    agentCircle1.setOrigin({agentCircle1.getRadius(), agentCircle1.getRadius()});
-
-    sf::CircleShape agentCircle2(8.f);
-    agentCircle2.setFillColor(sf::Color::Blue);
-    agentCircle2.setOrigin(
-        {agentCircle2.getRadius(), agentCircle2.getRadius()});
 
     sf::VertexArray krawedzie(sf::PrimitiveType::Lines);
 
@@ -90,44 +117,29 @@ int main() {
         }
     }
 
-    std::deque<int> order1 = dfs(graf, a1.pozycjaAgenta());
-    std::deque<int> order2 = dfs(graf, a2.pozycjaAgenta());
-
-    order1.erase(order1.begin());
-    order2.erase(order2.begin());
-
-    std::deque<int> const backupOrder = order1;
-    std::deque<int> const backupOrder2 = order2;
-
-    std::set<int> odwiedzone1;
-    std::set<int> odwiedzone2;
-
-    std::deque<int> poprzednieKroki1;
-    std::deque<int> poprzednieKroki2;
-
-    poprzednieKroki1.emplace_back(a1.pozycjaAgenta());
-    poprzednieKroki2.emplace_back(a2.pozycjaAgenta());
-
-    a1.moc = 50;
-    a2.moc = 75;
-
-    std::vector<int> sasiedzi1;
-    std::vector<int> sasiedzi2;
-
-    std::vector<int> dostepniSasiedzi1;
-    std::vector<int> dostepniSasiedzi2;
-
-    int nastepnyKrok1;
-    int nastepnyKrok2;
-
     bool czySkonczone = false;
-    BonkDane daneBonka;
+    bool czyTura = false;
+    vector<size_t> przegrani;
+    int idZwyciezcy = -1;
+    float licznikCzasu = 0.f;
+    int czyJackpot = -1;
+
+    sf::Clock deltaClock;
 
     while (window.isOpen()) {
 
-        // Ustawienie wizualizacji agenta na jego pozycje
-        agentCircle1.setPosition(pozycjeWierzcholkow[a1.pozycjaAgenta()]);
-        agentCircle2.setPosition(pozycjeWierzcholkow[a2.pozycjaAgenta()]);
+        sf::Time dtTime = deltaClock.restart();
+        float dt = dtTime.asSeconds();
+
+        bool czyKtosSieRusza = false;
+        for (auto &a : agenci) {
+            if (a.czyZywy == false)
+                continue;
+
+            a.aktualizujAnimacje(dt); // To przesuwa kółka
+            if (a.wTrakcieRuchu)
+                czyKtosSieRusza = true;
+        }
 
         while (const auto event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>()) {
@@ -136,121 +148,143 @@ int main() {
 
             if (const auto *keyPressed = event->getIf<sf::Event::KeyPressed>()) {
 
-                if (daneBonka.aktywny)
+                if (czyKtosSieRusza)
                     continue;
                 if (czySkonczone == false) {
 
-                    if (daneBonka.tura == 0) {
+                    if (czyTura == false) {
 
                         if (keyPressed->code == sf::Keyboard::Key::Right) {
 
-                            if (!order1.empty() && !order2.empty()) {
+                            for (int i = 0; i < agenci.size(); i++) {
+                                if (agenci[i].czyZywy == false)
+                                    continue;
 
-                                if (odwiedzone1.size() < graf.size()) {
-                                    a1.przemiescAgenta(order1.front());
-                                    odwiedzone1.insert(order1.front());
-                                }
-                                if (odwiedzone1.size() == graf.size() - 1) {
-                                    (czySkonczone = true);
-                                }
-                                if (odwiedzone2.size() < graf.size()) {
-                                    a2.przemiescAgenta(order2.front());
-                                    odwiedzone2.insert(order2.front());
-                                }
-                                if (odwiedzone2.size() == graf.size() - 1) {
-                                    (czySkonczone = true);
+                                if (!agenci[i].kolejka.empty()) {
+
+                                    if (agenci[i].odwiedzone.size() < graf.size()) {
+                                        // Animacja
+                                        int idCelu = agenci[i].kolejka.front();
+
+                                        agenci[i].agent.przemiescAgenta(agenci[i].kolejka.front());
+                                        agenci[i].odwiedzone.insert(agenci[i].kolejka.front());
+                                        agenci[i].poprzednieKroki.emplace_back(agenci[i].kolejka.front());
+                                        agenci[i].kolejka.pop_front();
+
+                                        agenci[i].idzDo(pozycjeWierzcholkow[idCelu]);
+                                    }
+                                    if (agenci[i].odwiedzone.size() == graf.size() - 1) {
+                                        (czySkonczone = true);
+                                        idZwyciezcy = i;
+                                    }
                                 }
                             }
+                            std::vector<std::vector<int>> agenciNaWierzcholku(graf.size());
 
-                            nastepnyKrok1 = order1.front();
-                            nastepnyKrok2 = order2.front();
+                            for (int i = 0; i < agenci.size(); i++) {
+                                if (agenci[i].czyZywy == false)
+                                    continue;
 
-                            if (a1.pozycjaAgenta() == a2.pozycjaAgenta()) {
-                                bonk.play();
-                                daneBonka.aktywny = true;
-                                daneBonka.czyRazem = true;
-                                daneBonka.ktoWygra = (a1.moc > a2.moc ? 1 : 2);
-
-                            } else if (!poprzednieKroki1.empty() && !poprzednieKroki2.empty() && nastepnyKrok1 == poprzednieKroki2.back() && nastepnyKrok2 == poprzednieKroki1.back()) {
-                                bonk.play();
-                                daneBonka.aktywny = true;
-                                daneBonka.czyRazem = false;
-                                daneBonka.ktoWygra = (a1.moc > a2.moc ? 1 : 2);
+                                agenciNaWierzcholku[agenci[i].agent.pozycjaAgenta()].push_back(i);
                             }
 
-                            if (odwiedzone1.size() < graf.size() || odwiedzone2.size() < graf.size()) {
-                                order1.erase(order1.begin());
-                                order2.erase(order2.begin());
+                            for (int i = 0; i < agenciNaWierzcholku.size(); i++) {
+                                if (agenciNaWierzcholku[i].size() > 1) {
+                                    bonk.play();
+                                    int najwiekszaMoc = -1;
+                                    int idNajsilniejszego = agenciNaWierzcholku[i][0];
+
+                                    for (int j : agenciNaWierzcholku[i]) {
+                                        if (agenci[j].agent.moc > najwiekszaMoc) {
+                                            najwiekszaMoc = agenci[j].agent.moc;
+                                            idNajsilniejszego = j;
+                                        }
+                                    }
+
+                                    for (int idPrzegranego : agenciNaWierzcholku[i]) {
+                                        if (idPrzegranego != idNajsilniejszego) {
+                                            przegrani.emplace_back(idPrzegranego);
+                                        }
+                                    }
+
+                                    czyTura = true;
+                                }
                             }
-
-                            poprzednieKroki1.emplace_back(a1.pozycjaAgenta());
-                            poprzednieKroki2.emplace_back(a2.pozycjaAgenta());
-
-                            agentCircle2.setFillColor(sf::Color::Blue);
-
-                            agentCircle1.setPosition(pozycjeWierzcholkow[a1.pozycjaAgenta()]);
-                            agentCircle2.setPosition(pozycjeWierzcholkow[a2.pozycjaAgenta()]);
-
-                            window.clear(sf::Color::Black);
-                            window.draw(krawedzie);
-                            for (const auto &wezel : wezly)
-                                window.draw(wezel);
-                            window.draw(agentCircle1);
-                            window.draw(agentCircle2);
-                            window.display();
+                            agenciNaWierzcholku.clear();
                         }
+                    }
+                    // Animacja
+                    else if (czyTura && !czyKtosSieRusza) {
+                        czyTura = false;
 
-                    } else if (daneBonka.ktoWygra == 1) {
-                        agentCircle2.setFillColor(sf::Color::Blue);
-                        a2.przemiescAgenta(poprzednieKroki1.back());
-                        poprzednieKroki2.pop_back();
-                    } else {
-                        agentCircle2.setFillColor(sf::Color::Blue);
-                        order1.emplace_front(a1.pozycjaAgenta());
-                        a1.przemiescAgenta(poprzednieKroki1.back());
-                        daneBonka.tura = 0;
+                        for (size_t i : przegrani) {
+                            bool doZabicia = false;
+                            if (agenci[i].czyZywy == false)
+                                continue;
+
+                            if (agenci[i].poprzednieKroki.size() >= 2) {
+                                int idCeluCofniecia = agenci[i].poprzednieKroki[agenci[i].poprzednieKroki.size() - 2];
+
+                                for (auto &j : agenci) {
+                                    if (j.czyZywy == false)
+                                        continue;
+                                    if (j.agent.pozycjaAgenta() == idCeluCofniecia)
+                                        doZabicia = true;
+                                }
+
+                                if (doZabicia) {
+                                    agenci[i].czyUmiera = true;
+                                    YodaDeath.play();
+                                    agenci[i].smierc();
+                                } else {
+                                    agenci[i].cofnij(pozycjeWierzcholkow[idCeluCofniecia]);
+                                }
+                            }
+                        }
+                        przegrani.clear();
+                    }
+                    if (keyPressed->code == sf::Keyboard::Key::Left) {
                     }
                 }
-                if (keyPressed->code == sf::Keyboard::Key::Left) {
+            }
+        }
+        licznikCzasu += dt;
 
-                    agentCircle2.setFillColor(sf::Color::Blue);
+        if (czySkonczone == 1 && idZwyciezcy != -1) {
+            
+            if (agenci[idZwyciezcy].wTrakcieRuchu == false) {
+                agenci[idZwyciezcy].zmienRozmiar(50.f);
 
-                    a1.przemiescAgenta(0);
-                    order1 = backupOrder;
-                    odwiedzone1.clear();
-
-                    poprzednieKroki1.clear();
-                    poprzednieKroki2.clear();
-
-                    a2.przemiescAgenta(17);
-                    order2 = backupOrder2;
-                    odwiedzone2.clear();
-
-                    czySkonczone = false;
+                if (czyJackpot == -1){
+                    jackpot.play();
+                    czyJackpot = 1;
                 }
+
+                if (licznikCzasu <= 0.5f) {
+                    agenci[idZwyciezcy].koloAgenta.setFillColor(sf::Color::Red);
+                } else if (licznikCzasu <= 1.f) {
+                    agenci[idZwyciezcy].koloAgenta.setFillColor(sf::Color::Green);
+                } else if (licznikCzasu <= 1.5f) {
+                    agenci[idZwyciezcy].koloAgenta.setFillColor(sf::Color::Blue);
+                } else licznikCzasu = 0.f;
             }
+        }
+        // Kolor backgroundu
+        window.clear(sf::Color::Black);
 
-            // Kolor backgroundu
-            window.clear(sf::Color::Black);
-
-            // Rysuj w kolejności:
-            window.draw(krawedzie);
-            for (const auto &wezel : wezly) {
-                window.draw(wezel);
-            }
-
-            window.draw(agentCircle1);
-            window.draw(agentCircle2);
-
-            window.display();
+        // Rysuj w kolejności:
+        window.draw(krawedzie);
+        for (const auto &wezel : wezly) {
+            window.draw(wezel);
         }
 
-        if (daneBonka.aktywny) {
-            wykonajBonk(a1, a2, order1, order2, poprzednieKroki1, poprzednieKroki2, odwiedzone1, odwiedzone2, bonk, graf, czySkonczone, agentCircle1, agentCircle2, daneBonka);
+        for (auto &i : agenci) {
+            if (i.czyZywy == false)
+                continue;
 
-            daneBonka.aktywny = false;
-            daneBonka.czyRazem = false;
-            continue;
+            window.draw(i.koloAgenta);
         }
+
+        window.display();
     }
 }

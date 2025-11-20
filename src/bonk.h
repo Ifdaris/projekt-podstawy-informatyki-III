@@ -19,8 +19,8 @@ struct BonkDane {
 void wykonajBonk(
     Agent &a1,
     Agent &a2,
-    std::deque<int> &order1,
-    std::deque<int> &order2,
+    std::deque<int> &kolejka1,
+    std::deque<int> &kolejka2,
     std::deque<int> &poprzednieKroki1,
     std::deque<int> &poprzednieKroki2,
     std::set<int> &odwiedzone1,

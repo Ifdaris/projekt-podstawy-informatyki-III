@@ -1,0 +1,45 @@
+#pragma once
+
+#include <SFML/Graphics.hpp>
+#include <deque>
+#include <set>
+
+#include "Agent.h"
+
+class DaneAgenta {
+
+  public:
+    std::deque<int> kolejka;
+    std::deque<int> zapasowaKolejka;
+    std::set<int> odwiedzone;
+    std::deque<int> poprzednieKroki;
+    sf::CircleShape koloAgenta;
+    Agent agent;
+
+    // --- NOWE POLA DO ANIMACJI ---
+    sf::Vector2f startAnimacji; // Skąd ruszam
+    sf::Vector2f celAnimacji;   // Dokąd idę
+    float postepAnimacji;       // Od 0.0 do 1.0
+    bool wTrakcieRuchu;         // Czy się ruszam?
+    float predkoscRuchu;        // Jak szybko (jednostki na sekundę)
+
+    DaneAgenta(int _idAgenta, int _idAktualnegoWierzcholka, sf::Color _kolorAgenta, std::deque<int> _kolejka, int mocAgenta) : agent(_idAgenta, _idAktualnegoWierzcholka) {
+        koloAgenta.setRadius(8.f);
+        koloAgenta.setFillColor(_kolorAgenta);
+        koloAgenta.setOrigin({koloAgenta.getRadius(), koloAgenta.getRadius()});
+        kolejka = _kolejka;
+        zapasowaKolejka = _kolejka;
+        poprzednieKroki.emplace_back(agent.pozycjaAgenta());
+        agent.moc = mocAgenta;
+    }
+    void cofnij() {
+        poprzednieKroki.pop_back();
+        kolejka.emplace_front(agent.pozycjaAgenta());
+        agent.przemiescAgenta(poprzednieKroki.back());
+        poprzednieKroki.pop_back();
+    }
+
+    void stoj() {
+        kolejka.emplace_front(agent.pozycjaAgenta());
+    }
+};

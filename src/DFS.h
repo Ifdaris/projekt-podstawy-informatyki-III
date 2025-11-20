@@ -66,6 +66,6 @@ deque<int> dfs(vector<Wierzcholek>& graf, int start_index = 0) {
             }
         }
     }
-
+    res.erase(res.begin());
     return res;
 }

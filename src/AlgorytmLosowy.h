@@ -7,12 +7,12 @@
 
 using namespace std;
 
-vector<int> algorytmlosowy(vector<Wierzcholek>& graf, int start_index = 0, unsigned int seed = 0) {
+deque<int> algorytmlosowy(vector<Wierzcholek>& graf, int start_index = 0, unsigned int seed = 0) {
     int n = graf.size();
     if (n == 0) return {};
 
     vector<bool> visited(n, false);
-    vector<int> res;
+    deque<int> res;
 
     stack<pair<int, int>> s;
     vector<int> parent(n, -1);
@@ -70,7 +70,7 @@ vector<int> algorytmlosowy(vector<Wierzcholek>& graf, int start_index = 0, unsig
         }
 
     }
-
+    res.erase(res.begin());
     return res;
 
 }

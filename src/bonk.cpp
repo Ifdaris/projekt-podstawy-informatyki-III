@@ -2,8 +2,8 @@
 
 void wykonajBonk(Agent &a1,
                  Agent &a2,
-                 std::deque<int> &order1,
-                 std::deque<int> &order2,
+                 std::deque<int> &kolejka1,
+                 std::deque<int> &kolejka2,
                  std::deque<int> &poprzednieKroki1,
                  std::deque<int> &poprzednieKroki2,
                  std::set<int> &odwiedzone1,
@@ -22,15 +22,15 @@ void wykonajBonk(Agent &a1,
             if (!poprzednieKroki2.empty()) {
                 int temp = a2.pozycjaAgenta();
                 a2.przemiescAgenta(poprzednieKroki2.back());
-                order2.emplace_front(temp);
+                kolejka2.emplace_front(temp);
             }
 
         } else if (daneBonka.ktoWygra == 2) {
             if (!poprzednieKroki1.empty()) {
                 poprzednieKroki1.pop_back();
-                order1.emplace_front(a1.pozycjaAgenta());
-                order1.emplace_front(poprzednieKroki1.back());
-                order2.emplace_front(a2.pozycjaAgenta());
+                kolejka1.emplace_front(a1.pozycjaAgenta());
+                kolejka1.emplace_front(poprzednieKroki1.back());
+                kolejka2.emplace_front(a2.pozycjaAgenta());
                 poprzednieKroki1.pop_back();
             }
         }
@@ -41,7 +41,7 @@ void wykonajBonk(Agent &a1,
         } else if (daneBonka.ktoWygra == 2) {
             
             poprzednieKroki1.pop_back();
-            order1.emplace_front(a1.pozycjaAgenta());
+            kolejka1.emplace_front(a1.pozycjaAgenta());
             a1.przemiescAgenta(poprzednieKroki1.back());
             a2.przemiescAgenta(a1.pozycjaAgenta());
             odwiedzone2.insert(a2.pozycjaAgenta());
