@@ -1,16 +1,17 @@
 #include <SFML/Graphics.hpp>
+#include <atomic>
 #include <chrono> // KLUCZOWE: Do pomiaru czasu
 #include <deque>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <mutex>
 #include <random>
 #include <sstream>
 #include <thread>
 #include <unordered_set>
 #include <vector>
 #include <ctime> 
-// Usunięto: <atomic>, <mutex> (już niepotrzebne bez paska)
 
 #include "AlgorytmLosowy.h"
 #include "DFS.h"
@@ -24,10 +25,28 @@ struct Statystyki {
     int wygraneLosowe = 0;
 };
 
-// USUNIĘTO: std::atomic<int> postepCalkowity(0);
-// USUNIĘTO: void rysujPasekPostepu(...)
+// Zmienna atomowa - bezpieczna dla wielu wątków
+std::atomic<int> postepCalkowity(0);
 
-// Funkcja wykonajSymulacje (Dostosowana - usunięto postepCalkowity++)
+// Funkcja pomocnicza do rysowania paska w konsoli (BEZ ZMIAN)
+void rysujPasekPostepu(int obecny, int calkowity) {
+    const int szerokoscPaska = 50;
+    float procent = (float)obecny / calkowity;
+    int wypelnienie = (int)(szerokoscPaska * procent);
+
+    cout << "\r["; 
+    for (int i = 0; i < szerokoscPaska; ++i) {
+        if (i < wypelnienie)
+            cout << "=";
+        else if (i == wypelnienie)
+            cout << ">";
+        else
+            cout << " ";
+    }
+    cout << "] " << int(procent * 100.0) << "% (" << obecny << "/" << calkowity << ")" << flush;
+}
+
+// Funkcja wykonajSymulacje (Poprawiona linia wywołania algorytmlosowy)
 void wykonajSymulacje(int liczbaSymulacji, vector<Wierzcholek> &graf, vector<sf::Vector2f> &pozycjeWierzcholkow, int iloscAgentowDFS, int iloscAgentowLosowych, Statystyki *statystykiLokalne) {
     
     // Zmienne Losowe Thread-Local (PRZESUNIĘTE POZA PĘTLĘ GŁÓWNĄ)
@@ -70,6 +89,7 @@ void wykonajSymulacje(int liczbaSymulacji, vector<Wierzcholek> &graf, vector<sf:
                 poczatkowyWierzcholek = distribution(generator);
             }
             sf::Vector2f startPos = pozycjeWierzcholkow[poczatkowyWierzcholek];
+            // POPRAWIONE WYWOŁANIE: Z generator
             agenci.emplace_back(idAgentow, poczatkowyWierzcholek, sf::Color::Red, algorytmlosowy(graf, poczatkowyWierzcholek, generator), percentDist(generator), startPos);
             wierzcholkiPoczatkowe.insert(poczatkowyWierzcholek);
         }
@@ -106,7 +126,7 @@ void wykonajSymulacje(int liczbaSymulacji, vector<Wierzcholek> &graf, vector<sf:
 
                 // --- LOGIKA KOLIZJI I WALKI ---
                 for (auto& w : agenciNaWierzcholku) {
-                    w.clear(); 
+                    w.clear(); // Recykling, czyszczenie wektorów
                 }
 
                 for (int i = 0; i < agenci.size(); i++) {
@@ -162,7 +182,8 @@ void wykonajSymulacje(int liczbaSymulacji, vector<Wierzcholek> &graf, vector<sf:
             }
         }
 
-        // USUNIĘTO: postepCalkowity++; 
+        // --- ZWIĘKSZANIE LICZNIKA (DLA PASKA POSTĘPU) ---
+        postepCalkowity++; 
     }
 }
 
@@ -196,19 +217,20 @@ int main() {
 
     int iloscAgentowDFS = 4;
     int iloscAgentowLosowych = 3;
-    const int LICZBA_SYMULACJI = 10000; 
+    //licznik
+    const int LICZBA_SYMULACJI = 10000; // Zwiększenie dla lepszego pomiaru czasu
 
-    // --- WIELOWĄTKOWOŚĆ (OPTYMALNA KONFIGURACJA) ---
-    // 🛑 Krok 2: Ustawienie na stałe 2 wątki
+    // --- WIELOWĄTKOWOŚĆ ---
     const int LICZBA_WATKOW = 2;
     int symulacjiNaWatek = LICZBA_SYMULACJI / LICZBA_WATKOW;
 
     vector<thread> watki;
     vector<Statystyki> wyniki(LICZBA_WATKOW);
-    // postepCalkowity = 0; - Usunięto
+    postepCalkowity = 0; 
 
-    cout << "Start: " << LICZBA_SYMULACJI << " symulacji (" << LICZBA_WATKOW << " watkow - MAX WYDAJNOSC)." << endl;
-    
+    cout << "Start: " << LICZBA_SYMULACJI << " symulacji (" << LICZBA_WATKOW << " watkow)." << endl;
+    cout << "Przetwarzanie..." << endl;
+
     // 1. ZACZNIJ POMIAR CZASU ⏱️
     auto start = chrono::high_resolution_clock::now();
 
@@ -223,16 +245,22 @@ int main() {
         });
     }
 
-    // 🛑 USUNIĘTO: Cała pętla while monitorująca postęp
+    // 3. Pętla monitorująca postęp 
+    while (postepCalkowity < LICZBA_SYMULACJI) {
+        rysujPasekPostepu(postepCalkowity, LICZBA_SYMULACJI);
+        this_thread::sleep_for(chrono::milliseconds(100)); 
+    }
+    rysujPasekPostepu(LICZBA_SYMULACJI, LICZBA_SYMULACJI);
+    cout << endl;
 
-    // 3. Złączanie wątków
+    // 4. Złączanie wątków
     for (auto &watek : watki) {
         watek.join();
     }
     
-    // 4. ZAKOŃCZ POMIAR CZASU 🏁
+    // 5. ZAKOŃCZ POMIAR CZASU 🏁
     auto koniec = chrono::high_resolution_clock::now();
-    // 5. OBLICZ CZAS TRWANIA
+    // 6. OBLICZ CZAS TRWANIA
     auto czasTrwania = chrono::duration_cast<chrono::milliseconds>(koniec - start);
 
 
@@ -243,16 +271,15 @@ int main() {
         statystykiCalkowite.wygraneLosowe += stat.wygraneLosowe;
     }
 
-    cout << "Koniec przetwarzania." << endl;
     cout << endl
          << "=== WYNIKI KONCOWE ===" << endl;
     cout << "DFS Wygral: " << statystykiCalkowite.wygraneDFS << " (" << (float)statystykiCalkowite.wygraneDFS / LICZBA_SYMULACJI * 100.0f << "%)" << endl;
     cout << "Losowy Wygral: " << statystykiCalkowite.wygraneLosowe << " (" << (float)statystykiCalkowite.wygraneLosowe / LICZBA_SYMULACJI * 100.0f << "%)" << endl;
     cout << "Nierozstrzygniete: " << (LICZBA_SYMULACJI - statystykiCalkowite.wygraneDFS - statystykiCalkowite.wygraneLosowe) << endl;
     
-    // 6. WYDRUKUJ CZAS
+    // 7. WYDRUKUJ CZAS
     cout << endl
-         << "Czas wykonania (multi-threaded [" << LICZBA_WATKOW << "] - BEZ NARZUTU): " << czasTrwania.count() << " ms" << endl;
+         << "Czas wykonania (multi-threaded [" << LICZBA_WATKOW << "]): " << czasTrwania.count() << " ms" << endl;
 
 
     cin.get();

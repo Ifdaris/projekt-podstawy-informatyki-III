@@ -7,26 +7,19 @@
 
 using namespace std;
 
-deque<int> algorytmlosowy(vector<Wierzcholek>& graf, int start_index = 0, unsigned int seed = 0) {
+// Zmiana: Jeśli to możliwe, używaj const Wierzcholek& dla grafu
+deque<int> algorytmlosowy(vector<Wierzcholek>& graf, int start_index, std::mt19937& gen) {
     int n = graf.size();
     if (n == 0) return {};
 
+    // 💡 OPTYMALIZACJA 1: Deklaracje bez zmian (są minimalne)
     vector<bool> visited(n, false);
     deque<int> res;
-
     stack<pair<int, int>> s;
     vector<int> parent(n, -1);
 
-    vector<vector<int>> shuffled(n);
-    vector<char> prepared(n, 0);
-
-    std::mt19937 gen;
-    if (seed == 0) {
-        std::random_device rd;
-        gen = std::mt19937(rd());
-    } else {
-        gen = std::mt19937(seed);
-    }
+    // OPTYMALIZACJA 2: Tablica musi być lokalna i alokowana (niestety, bo jest tasowana)
+    vector<vector<int>> shuffled_neighbors(n); 
 
     s.push({start_index, 0});
     parent[start_index] = -1;
@@ -40,15 +33,22 @@ deque<int> algorytmlosowy(vector<Wierzcholek>& graf, int start_index = 0, unsign
             res.push_back(node);
         }
 
-        if (!prepared[node]) {
-            shuffled[node] = graf[node].pobierzSasiadow();
-            shuffle(shuffled[node].begin(), shuffled[node].end(), gen);
-            prepared[node] = 1;
+        // OPTYMALIZACJA 3: Tasowanie listy sąsiadów raz na wierzchołek
+        if (shuffled_neighbors[node].empty()) {
+            
+            // 💡 KLUCZOWA POPRAWKA: Jeśli pobierzSasiadow() zwraca kopię, 
+            // musimy ją skopiować. Poniższa wersja jest czytelna i minimalizuje kopiowanie.
+            shuffled_neighbors[node] = graf[node].pobierzSasiadow();
+            
+            // Tasowanie raz
+            shuffle(shuffled_neighbors[node].begin(), shuffled_neighbors[node].end(), gen);
         }
 
         bool found_unvisited = false;
-        while (neighbour_index < (int)shuffled[node].size()) {
-            int neighbor = shuffled[node][neighbour_index];
+        const vector<int>& current_neighbors = shuffled_neighbors[node];
+
+        while (neighbour_index < (int)current_neighbors.size()) {
+            int neighbor = current_neighbors[neighbour_index];
             neighbour_index++;
 
             if (!visited[neighbor]) {
@@ -57,20 +57,18 @@ deque<int> algorytmlosowy(vector<Wierzcholek>& graf, int start_index = 0, unsign
                 found_unvisited = true;
                 break;
             }
-
-            }
+        }
 
         if (!found_unvisited) {
             s.pop();
             if (!s.empty()) {
                 res.push_back(s.top().first);
-
             }
-
         }
-
     }
     res.erase(res.begin());
+    
+    // ZWROT PRZEZ KOPIĘ jest konieczny, ale można by użyć std::move (jeśli to deque) 
+    // dla małych zysków, jeśli kolejka jest duża, ale to zależy od kompilatora.
     return res;
-
 }
