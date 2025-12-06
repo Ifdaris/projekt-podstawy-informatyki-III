@@ -3,84 +3,78 @@
 #include <fstream>
 #include <iostream>
 #include <set>
-#include <sstream>
-#include <string>
-#include <time.h>
+#include <ctime>
 #include <vector>
 
 #include "AlgorytmLosowy.h"
 #include "DFS.h"
 #include "DaneAgenta.h"
+#include "GeneratorGrafu.h"
 #include "Wierzcholek.h"
 
-struct Statystyki {
+struct Statystyki
+{
     int wygraneDFS = 0;
     int wygraneLosowe = 0;
 };
 
-int main() {
-    srand(time(NULL));
+int main()
+{
+    srand(time(nullptr));
 
-    std::string line;
-    std::ifstream plik("res/graf3.txt");
+    const int LICZBA_WIERZCHOLKOW = 150;
+    const int LICZBA_KRAWEDZI = 2000;
+
     std::vector<Wierzcholek> graf;
     std::vector<sf::Vector2f> pozycjeWierzcholkow;
-    std::stringstream ss;
 
-    int idWierzcholka, idSasiada;
-    float pozycjaX, pozycjaY;
 
-    while (getline(plik, line)) {
-        ss.clear();
-        ss.str(line);
-        ss >> idWierzcholka >> pozycjaX >> pozycjaY;
-
-        Wierzcholek wierzcholek(idWierzcholka, pozycjaX, pozycjaY);
-        pozycjeWierzcholkow.push_back(sf::Vector2f(pozycjaX, pozycjaY));
-        while (ss >> idSasiada) {
-            wierzcholek.dodajSasiada(idSasiada);
-        }
-        graf.push_back(wierzcholek);
-        ss.clear();
-    }
-    plik.close();
-
-    int iloscAgentowDFS = 4;
-    int iloscAgentowLosowych = 3;
-    const int LICZBA_SYMULACJI = 100000;
+    int iloscAgentowDFS = 1;
+    int iloscAgentowLosowych = 1;
+    const int LICZBA_SYMULACJI = 1000;
 
     Statystyki statystyki;
 
     std::cout << "Start symulacji" << std::endl;
 
-    int poczatkowyWierzcholek = rand() % graf.size();
 
-    for (int symulacja = 0; symulacja < LICZBA_SYMULACJI; symulacja++) {
+    for (int symulacja = 0; symulacja < LICZBA_SYMULACJI; symulacja++)
+    {
+        generujGraf(LICZBA_WIERZCHOLKOW, LICZBA_KRAWEDZI, graf, pozycjeWierzcholkow);
+        int poczatkowyWierzcholek = rand() % graf.size();
 
         // Inicjalizowanie agentow
         std::vector<DaneAgenta> agenci;
         std::unordered_set<int> wierzcholkiPoczatkowe;
         int idAgentow = 0;
 
-        for (int i = 0; i < iloscAgentowDFS; i++, idAgentow++) {
-            while (wierzcholkiPoczatkowe.find(poczatkowyWierzcholek) != wierzcholkiPoczatkowe.end()) {
+        for (int i = 0; i < iloscAgentowDFS; i++, idAgentow++)
+        {
+            while (wierzcholkiPoczatkowe.find(poczatkowyWierzcholek) != wierzcholkiPoczatkowe.end())
+            {
                 poczatkowyWierzcholek = rand() % graf.size();
             }
-            // Animacja
+
             sf::Vector2f startPos = pozycjeWierzcholkow[poczatkowyWierzcholek];
-            agenci.emplace_back(idAgentow, poczatkowyWierzcholek, sf::Color::Red, dfs(graf, poczatkowyWierzcholek), rand() % 100, startPos);
-            //--------
+            DaneAgenta agent(idAgentow, poczatkowyWierzcholek, sf::Color::Red, dfs(graf, poczatkowyWierzcholek),
+                             rand() % 100, startPos);
+
+            agent.odwiedzone.insert(poczatkowyWierzcholek);
+            agenci.push_back(agent);
 
             wierzcholkiPoczatkowe.insert(poczatkowyWierzcholek);
         }
 
-        for (int i = 0; i < iloscAgentowLosowych; i++, idAgentow++) {
-            while (wierzcholkiPoczatkowe.find(poczatkowyWierzcholek) != wierzcholkiPoczatkowe.end()) {
+        for (int i = 0; i < iloscAgentowLosowych; i++, idAgentow++)
+        {
+            while (wierzcholkiPoczatkowe.find(poczatkowyWierzcholek) != wierzcholkiPoczatkowe.end())
+            {
                 poczatkowyWierzcholek = rand() % graf.size();
             }
             // Animacja
             sf::Vector2f startPos = pozycjeWierzcholkow[poczatkowyWierzcholek];
-            agenci.emplace_back(idAgentow, poczatkowyWierzcholek, sf::Color::Red, algorytmlosowy(graf, poczatkowyWierzcholek), rand() % 100, startPos);
+            agenci.emplace_back(idAgentow, poczatkowyWierzcholek, sf::Color::Red,
+                                algorytmlosowy(graf, poczatkowyWierzcholek), rand() % 100, startPos);
             //---------
             wierzcholkiPoczatkowe.insert(poczatkowyWierzcholek);
         }
@@ -90,31 +84,36 @@ int main() {
         vector<size_t> przegrani;
         int limitTur = 0;
 
-        while (!czySkonczone && limitTur < 2000) {
+        while (!czySkonczone && limitTur < 2000)
+        {
             limitTur++;
 
-            if (czyTura == false) {
-
-                for (int i = 0; i < agenci.size(); i++) {
+            if (czyTura == false)
+            {
+                for (int i = 0; i < agenci.size(); i++)
+                {
                     if (agenci[i].czyZywy == false)
                         continue;
 
-                    if (!agenci[i].kolejka.empty()) {
-
-                        if (agenci[i].odwiedzone.size() < graf.size()) {
-
+                    if (!agenci[i].kolejka.empty())
+                    {
+                        if (agenci[i].odwiedzone.size() < graf.size())
+                        {
                             agenci[i].agent.przemiescAgenta(agenci[i].kolejka.front());
                             agenci[i].odwiedzone.insert(agenci[i].kolejka.front());
                             agenci[i].poprzednieKroki.emplace_back(agenci[i].kolejka.front());
                             agenci[i].kolejka.pop_front();
                         }
-                        if (agenci[i].odwiedzone.size() == graf.size() - 1) {
+                        if (agenci[i].odwiedzone.size() == graf.size() - 1)
+                        {
                             czySkonczone = true;
-                            if (i < iloscAgentowDFS - 1) {
+                            if (i < iloscAgentowDFS)
+                            {
                                 statystyki.wygraneDFS++;
                                 break;
                             }
-                            else {
+                            else
+                            {
                                 statystyki.wygraneLosowe++;
                                 break;
                             }
@@ -123,27 +122,34 @@ int main() {
                 }
                 std::vector<std::vector<int>> agenciNaWierzcholku(graf.size());
 
-                for (int i = 0; i < agenci.size(); i++) {
+                for (int i = 0; i < agenci.size(); i++)
+                {
                     if (agenci[i].czyZywy == false)
                         continue;
 
                     agenciNaWierzcholku[agenci[i].agent.pozycjaAgenta()].push_back(i);
                 }
 
-                for (int i = 0; i < agenciNaWierzcholku.size(); i++) {
-                    if (agenciNaWierzcholku[i].size() > 1) {
+                for (int i = 0; i < agenciNaWierzcholku.size(); i++)
+                {
+                    if (agenciNaWierzcholku[i].size() > 1)
+                    {
                         int najwiekszaMoc = -1;
                         int idNajsilniejszego = agenciNaWierzcholku[i][0];
 
-                        for (int j : agenciNaWierzcholku[i]) {
-                            if (agenci[j].agent.moc > najwiekszaMoc) {
+                        for (int j : agenciNaWierzcholku[i])
+                        {
+                            if (agenci[j].agent.moc > najwiekszaMoc)
+                            {
                                 najwiekszaMoc = agenci[j].agent.moc;
                                 idNajsilniejszego = j;
                             }
                         }
 
-                        for (int idPrzegranego : agenciNaWierzcholku[i]) {
-                            if (idPrzegranego != idNajsilniejszego) {
+                        for (int idPrzegranego : agenciNaWierzcholku[i])
+                        {
+                            if (idPrzegranego != idNajsilniejszego)
+                            {
                                 przegrani.emplace_back(idPrzegranego);
                             }
                         }
@@ -152,27 +158,35 @@ int main() {
                     }
                 }
                 agenciNaWierzcholku.clear();
-            } else {
+            }
+            else
+            {
                 czyTura = false;
 
-                for (size_t i : przegrani) {
+                for (size_t i : przegrani)
+                {
                     bool doZabicia = false;
                     if (agenci[i].czyZywy == false)
                         continue;
 
-                    if (agenci[i].poprzednieKroki.size() >= 2) {
+                    if (agenci[i].poprzednieKroki.size() >= 2)
+                    {
                         int idCeluCofniecia = agenci[i].poprzednieKroki[agenci[i].poprzednieKroki.size() - 2];
 
-                        for (auto &j : agenci) {
+                        for (auto& j : agenci)
+                        {
                             if (j.czyZywy == false)
                                 continue;
                             if (j.agent.pozycjaAgenta() == idCeluCofniecia)
                                 doZabicia = true;
                         }
 
-                        if (doZabicia) {
+                        if (doZabicia)
+                        {
                             agenci[i].czyZywy = false;
-                        } else {
+                        }
+                        else
+                        {
                             agenci[i].cofnij(pozycjeWierzcholkow[idCeluCofniecia]);
                         }
                     }
@@ -186,9 +200,12 @@ int main() {
     }
 
     std::cout << "Wyniki: " << std::endl;
-    std::cout << "DFS Wygral: " << statystyki.wygraneDFS << " razy (" << (float)statystyki.wygraneDFS / LICZBA_SYMULACJI * 100.0f << "%)" << std::endl;
-    std::cout << "Losowy Wygral: " << statystyki.wygraneLosowe << " razy (" << (float)statystyki.wygraneLosowe / LICZBA_SYMULACJI * 100.0f << "%)" << std::endl;
-    std::cout << "Remisy/Bledy (Limit tur): " << (LICZBA_SYMULACJI - statystyki.wygraneDFS - statystyki.wygraneLosowe) << std::endl;
+    std::cout << "DFS Wygral: " << statystyki.wygraneDFS << " razy (" << (float)statystyki.wygraneDFS / LICZBA_SYMULACJI
+        * 100.0f << "%)" << std::endl;
+    std::cout << "Losowy Wygral: " << statystyki.wygraneLosowe << " razy (" << (float)statystyki.wygraneLosowe /
+        LICZBA_SYMULACJI * 100.0f << "%)" << std::endl;
+    std::cout << "Remisy/Bledy (Limit tur): " << (LICZBA_SYMULACJI - statystyki.wygraneDFS - statystyki.wygraneLosowe)
+        << std::endl;
 
     std::cin.get();
     return 0;
